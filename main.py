@@ -25,42 +25,31 @@ class SimpleTextLoader:
 class ChatBot:
     def __init__(self):
         load_dotenv()
-        self.loader = SimpleTextLoader('./horoscope.txt')  # Ensure the path is correct
+        self.loader = SimpleTextLoader('./horoscope.txt') 
         self.documents = self.loader.load()
-
-        # Initialize HuggingFace embeddings
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
-
-        # Initialize Pinecone
         pinecone.init(
-            api_key=os.getenv('PINECONE_API_KEY'),  # Fetch Pinecone API key from environment variables
-            environment='gcp-starter'  # Specify the Pinecone environment
+            api_key=os.getenv('PINECONE_API_KEY'),  
+            environment='gcp-starter' 
         )
-
-        # Define Index Name
         index_name = "langchain-demo"
-
-        # Check if index exists in Pinecone
-        if index_name not in pinecone.list_indexes():
-            # Create a new Index with cosine metric and dimension 768
-            pinecone.create_index(name=index_name, metric="cosine", dimension=768)
-
-        # Split documents into chunks using CharacterTextSplitter
+        if index_name in pinecone.list_indexes():
+            pinecone.delete_index(index_name)
+     
+        pinecone.create_index(name=index_name, metric="cosine", dimension=768)
+    
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=4)
         docs = text_splitter.split_documents(self.documents)
 
-        # Create a document search index using the docs and embeddings
         self.docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
 
-        # Assign the vectorstore to self.vectorstore
         self.vectorstore = self.docsearch
 
-        # Set up the LLM
         repo_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
         self.llm = HuggingFaceEndpoint(
             repo_id=repo_id,
-            temperature=0.8,                     # Specify temperature directly
-            top_k=50,                            # Specify top_k directly
+            temperature=0.8,                    
+            top_k=50,                           
             huggingfacehub_api_token=os.getenv('HUGGINGFACE_API_KEY')
         )
 
@@ -81,14 +70,13 @@ class ChatBot:
         )
 
         self.rag_chain = (
-            {"context": self.vectorstore.as_retriever(), "question": RunnablePassthrough()}  # Use self.vectorstore
+            {"context": self.vectorstore.as_retriever(), "question": RunnablePassthrough()}
             | self.prompt 
             | self.llm
             | StrOutputParser()
         )
 
     def ask(self, user_input):
-        # Pass the question string directly to the chain
         try:
             result = self.rag_chain.invoke(user_input) 
             return result
@@ -96,8 +84,6 @@ class ChatBot:
             print(f"Error during invocation: {e}")
             return "Sorry, I couldn't process your request."
 
-
-# Using the ChatBot class
 if __name__ == "__main__":
     bot = ChatBot()
     user_input = input("Ask me anything: ")

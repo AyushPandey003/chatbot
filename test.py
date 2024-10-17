@@ -7,6 +7,7 @@ from langchain_community.vectorstores import Pinecone
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
 import pinecone
+
 class Document:
     def __init__(self, page_content: str, metadata: dict = None):
         self.page_content = page_content
@@ -26,35 +27,24 @@ class ChatBot:
         load_dotenv()
         self.loader = SimpleTextLoader('./horoscope.txt') 
         self.documents = self.loader.load()
-
-       
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
-
-       
         pinecone.init(
-            api_key=os.getenv('PINECONE_API_KEY'), 
+            api_key=os.getenv('PINECONE_API_KEY'),  
             environment='gcp-starter' 
         )
-
-       
         index_name = "langchain-demo"
-
-       
-        if index_name not in pinecone.list_indexes():
-           
-            pinecone.create_index(name=index_name, metric="cosine", dimension=768)
-
-       
+        if index_name in pinecone.list_indexes():
+            pinecone.delete_index(index_name)
+     
+        pinecone.create_index(name=index_name, metric="cosine", dimension=768)
+    
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=4)
         docs = text_splitter.split_documents(self.documents)
 
-       
         self.docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
 
-       
         self.vectorstore = self.docsearch
 
-       
         repo_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
         self.llm = HuggingFaceEndpoint(
             repo_id=repo_id,
@@ -80,14 +70,13 @@ class ChatBot:
         )
 
         self.rag_chain = (
-            {"context": self.vectorstore.as_retriever(), "question": RunnablePassthrough()} 
+            {"context": self.vectorstore.as_retriever(), "question": RunnablePassthrough()}
             | self.prompt 
             | self.llm
             | StrOutputParser()
         )
 
     def ask(self, user_input):
-       
         try:
             result = self.rag_chain.invoke(user_input) 
             return result
@@ -95,8 +84,6 @@ class ChatBot:
             print(f"Error during invocation: {e}")
             return "Sorry, I couldn't process your request."
 
-
-# Using the ChatBot class
 if __name__ == "__main__":
     bot = ChatBot()
     user_input = input("Ask me anything: ")
