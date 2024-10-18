@@ -3,9 +3,9 @@ import streamlit as st
 
 bot = ChatBot()
     
-st.set_page_config(page_title="Random Fortune Telling Bot")
+st.set_page_config(page_title="Astrology Bot")
 with st.sidebar:
-    st.title('Aries Fortune Telling Bot')
+    st.title('Astrology Bot')
 
 # Function for generating LLM response
 def generate_response(input):

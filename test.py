@@ -30,38 +30,35 @@ class ChatBot:
 
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
-        # Initialize Pinecone
+     
         pinecone.init(api_key=os.getenv('PINECONE_API_KEY'), environment='gcp-starter')  
         index_name = "langchain-demo"
 
-        # Create the index if it doesn't exist
+       
         if index_name not in pinecone.list_indexes():
             pinecone.create_index(name=index_name, metric="cosine", dimension=768)
         
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=4)
         docs = text_splitter.split_documents(self.documents)
         
-        # Batch processing for adding documents
         self.docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
 
         self.vectorstore = self.docsearch
 
-        # Use a suitable model for astrology
-        repo_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"  # A reliable Hugging Face model
+      
+        repo_id = "mistralai/Mixtral-8x7B-Instruct-v0.1" 
         self.llm = HuggingFaceEndpoint(
             repo_id=repo_id,
-            temperature=0.7,  # Adjusted for concise responses
+            temperature=0.7,  
             top_k=30,
-            max_new_tokens=128,  # Set lower to avoid errors
+            max_new_tokens=128,  
             huggingfacehub_api_token=os.getenv('HUGGINGFACE_API_KEY'),
-            model_kwargs={ }
         )
 
-        # Horoscope telling prompt
         template = """
         You are an astrologer and fortune teller. These humans will ask you questions about their future, relationships, career, and other aspects of their life. 
         Use the following horoscope or astrological context to answer the question. If you don't know the answer, just say you don't know. 
-        Keep the answer mystical but concise, within 2 sentences.
+        Keep the answer mystical but concise, within 6 sentences.
 
         Context: {context}
         Question: {question}
